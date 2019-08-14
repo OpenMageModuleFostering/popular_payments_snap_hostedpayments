@@ -1,0 +1,128 @@
+<?xml version="1.0"?>
+<!--
+
+/* Copyright (c) 2015 EVO Payments International - All Rights Reserved.
+*
+* This software and documentation is subject to and made
+* available only pursuant to the terms of an executed license
+* agreement, and may be used only in accordance with the terms
+* of said agreement. This software may not, in whole or in part,
+* be copied, photocopied, reproduced, translated, or reduced to
+* any electronic medium or machine-readable form without
+* prior consent, in writing, from EVO Payments International, INC.
+*
+* Use, duplication or disclosure by the U.S. Government is subject
+* to restrictions set forth in an executed license agreement
+* and in subparagraph (c)(1) of the Commercial Computer
+* Software-Restricted Rights Clause at FAR 52.227-19; subparagraph
+* (c)(1)(ii) of the Rights in Technical Data and Computer Software
+* clause at DFARS 252.227-7013, subparagraph (d) of the Commercial
+* Computer Software-Licensing clause at NASA FAR supplement
+* 16-52.227-86; or their equivalent.
+*
+* Information in this software is subject to change without notice
+* and does not represent a commitment on the part of EVO Payments International.
+* 
+* Sample Code is for reference Only and is intended to be used for educational purposes. It's the responsibility of 
+* the software company to properly integrate into thier solution code that best meets thier production needs. 
+*/
+
+-->
+<config>
+   <sections>
+		<payment>
+			<groups>
+				<hostedpayments translate="label" module="hostedpayments">
+					<label>Snap* Hosted Payments by Popular Payments</label>
+					<frontend_type>text</frontend_type>
+					<sort_order>10</sort_order>
+					<show_in_default>1</show_in_default>
+					<show_in_website>1</show_in_website>
+					<show_in_store>1</show_in_store>
+                    <comment><![CDATA[
+            <div><img src="http://www.snapspain.es/wp-content/uploads/poppay-snap-banner.png" alt="Snap* logo" /></div>
+			<p>¿No tienes una cuenta en <strong>Snap*</strong>? Contacta con nosotros haciendo clic 
+			<a href="http://www.snapspain.es/contacto/">aquí</a> o en el <strong>900 907 222</strong>.</p> 
+			<p>Visita <a href="http://www.snapspain.es" title="Ir al sitio Web de Snap*">www.snapspain.es</a> para más información.</p>
+			<hr />
+                    ]]></comment>
+					<fields>
+						<active translate="label">
+							<label>Enabled</label>
+							<frontend_type>select</frontend_type>
+							<source_model>adminhtml/system_config_source_yesno</source_model>
+							<sort_order>1</sort_order>
+							<show_in_default>1</show_in_default>
+							<show_in_website>1</show_in_website>
+							<show_in_store>0</show_in_store>
+						</active>
+						<title translate="label">
+							<label>Title</label>
+							<frontend_type>text</frontend_type>
+							<sort_order>2</sort_order>
+							<show_in_default>1</show_in_default>
+							<show_in_website>1</show_in_website>
+							<show_in_store>1</show_in_store>
+						</title>
+						<test_mode translate="label comment">
+							<label>Test mode</label>
+							<comment>Select your Snap* environment.</comment>
+							<frontend_type>select</frontend_type>
+							<source_model>adminhtml/system_config_source_yesno</source_model>
+							<sort_order>3</sort_order>
+							<show_in_default>1</show_in_default>
+							<show_in_website>1</show_in_website>
+							<show_in_store>0</show_in_store>
+						</test_mode>
+						<merchant_code translate="label comment">
+							<label>Merchant Code</label>
+							<comment>Your Snap* Hosted Payments code.</comment>
+							<frontend_type>text</frontend_type>
+							<sort_order>4</sort_order>
+							<show_in_default>1</show_in_default>
+							<show_in_website>1</show_in_website>
+							<show_in_store>1</show_in_store>
+						</merchant_code>
+						<merchant_authkey translate="label comment">
+							<label>Merchant Authkey</label>
+							<comment>The key corresponding to the Snap* Hosted Payments code.</comment>
+							<frontend_type>text</frontend_type>
+							<sort_order>5</sort_order>
+							<show_in_default>1</show_in_default>
+							<show_in_website>1</show_in_website>
+							<show_in_store>1</show_in_store>
+						</merchant_authkey>
+						<checkout_iframe translate="label comment">
+							<label>Use iframe layout</label>
+							<comment>Select whether Snap* is integrated in your shop using an iframe.</comment>
+							<frontend_type>select</frontend_type>
+							<source_model>adminhtml/system_config_source_yesno</source_model>
+							<sort_order>6</sort_order>
+							<show_in_default>1</show_in_default>
+							<show_in_website>1</show_in_website>
+							<show_in_store>1</show_in_store>
+						</checkout_iframe>
+						<trigger3ds translate="label comment">
+							<label>3D Secure Trigger</label>
+							<comment>Value that triggers 3D Secure. Empty -> Never, 0 -> Always.</comment>
+							<frontend_type>text</frontend_type>
+							<sort_order>7</sort_order>
+							<show_in_default>1</show_in_default>
+							<show_in_website>1</show_in_website>
+							<show_in_store>1</show_in_store>
+						</trigger3ds>
+						<order_prefix translate="label comment">
+							<label>Order Prefix</label>
+							<comment>Order Prefix sent to Snap* Hosted Payments.</comment>
+							<frontend_type>text</frontend_type>
+							<sort_order>8</sort_order>
+							<show_in_default>1</show_in_default>
+							<show_in_website>1</show_in_website>
+							<show_in_store>1</show_in_store>
+						</order_prefix>
+					</fields>
+				</hostedpayments>
+			</groups>
+		</payment>
+	</sections>
+</config>

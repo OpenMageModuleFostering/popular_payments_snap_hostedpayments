@@ -27,29 +27,24 @@
 */
 
 /**
- * EVO Snap* Hosted Info Block.
- *
- * @category EVO
- * @package	Evo
+ * Token Checkout class.
+ * 
+ * @author Antonio Molinero <antonio.molinero@evopayments.com>
  * @copyright Copyright (c) 2015 EVO Snap* (http://www.evosnap.com)
  * @license	EVO Payments International EULA
  */
-class Evo_HostedPayments_Block_Form extends Mage_Payment_Block_Form
-{
-	/**
-	 * Varien constructor
-	 */
-	protected function _construct()
-	{
-		$this->setTemplate('evo/form.phtml');
-		parent::_construct();
-		$this->_initCreditCards();
-	}
+class SnapToken_Checkout extends SnapCheckoutAbstract {
 	
-	private function _initCreditCards(){
-        $cards = Mage::getResourceModel('hostedpayments/storedcard_collection')->addFieldToSelect('*')
-            ->addFieldToFilter('customer_id', Mage::getSingleton('customer/session')->getCustomer()->getId())
-            ->addFieldToFilter('acct_exp', array('gteq' => date('Y-m-d')));
-        $this->setStoredCards($cards);
+	/**
+	 * Token.
+	 * @var SnapToken
+	 */
+	public $token;
+	
+	/**
+	 * Retrieves the action to execute.
+	 */
+	public function getAction(){
+		return 'token';
 	}
 }

@@ -35,6 +35,8 @@
 			<codePool>local</codePool>
 			<depends>
 				<Mage_Payment />
+				<Mage_Cms/>
+				<Mage_Customer/>
 			</depends>
 		</Evo_HostedPayments>
 	</modules>

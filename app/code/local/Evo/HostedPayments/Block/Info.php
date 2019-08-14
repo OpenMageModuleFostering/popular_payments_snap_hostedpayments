@@ -56,4 +56,27 @@ class Evo_HostedPayments_Block_Info extends Mage_Payment_Block_Info
 		return $result;
 	}
 	
+	/**
+	 * Retrieves stored card data.
+	 * @return Mage_Core_Model_Abstract
+	 */
+	public function getStoredCardData() {
+	    $tokenId = (int) $this->getInfo()->getAdditionalInformation('token_id');
+	     
+	    if($tokenId && ($tokenId > 0)){
+	       return Mage::getModel('hostedpayments/storedcard')->load($tokenId);
+	    }
+	    return false;
+	}
+
+	/**
+	 * Tests if the card data is going to be saved in EVO Snap*.
+	 * @return boolean
+	 */
+	public function isCardSaved() {
+	    $tokenId = (int) $this->getInfo()->getAdditionalInformation('token_id');
+	    return ($this->getInfo()->getAdditionalInformation('create_token') === 'true') &&
+	       !($tokenId && ($tokenId > 0));
+	}
+
 }

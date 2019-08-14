@@ -63,7 +63,26 @@ class Evo_HostedPayments_Model_Payment extends Mage_Payment_Model_Method_Abstrac
 	protected $_code = 'hostedpayments';
 	protected $_formBlockType = 'hostedpayments/form';
 	protected $_infoBlockType = 'hostedpayments/info';
-	
+
+    /**
+     * Assign data to info model instance
+     *
+     * @param   mixed $data
+     * @return  Mage_Payment_Model_Info
+     */
+    public function assignData($data)
+    {
+        if (!($data instanceof Varien_Object)) {
+            $data = new Varien_Object($data);
+        }
+        
+        $info = $this->getInfoInstance();
+        $info->setAdditionalInformation('token_id', $data->getTokenId());
+        $info->setAdditionalInformation('create_token', $data->getCreateToken());
+        
+        return $this;
+    }
+    
 	/**
 	* Retrieve model helper
 	*
@@ -85,18 +104,6 @@ class Evo_HostedPayments_Model_Payment extends Mage_Payment_Model_Method_Abstrac
 		Mage::log(" --- Snap* Hosted Payments API : getCheckout --- ");
 		return Mage::getSingleton('checkout/session');
 	}
-
-	/**
-	* Get current quote
-	*
-	* @return Mage_Sales_Model_Quote
-	*/
-	public function getQuote()
-	{
-		Mage::log(" --- Snap* Hosted Payments API : getQuote --- ");
-		return $this->getCheckout()->getQuote();
-	}
-
 
 	/**
 	* Get order model
@@ -141,7 +148,7 @@ class Evo_HostedPayments_Model_Payment extends Mage_Payment_Model_Method_Abstrac
 	 */
 	public function getOrderPlaceRedirectUrl()
 	{
-		return Mage::getUrl('hostedpayments/processing/pay');
+        return Mage::getUrl('hostedpayments/processing/pay');
 	}
 	
 	/**
@@ -192,7 +199,7 @@ class Evo_HostedPayments_Model_Payment extends Mage_Payment_Model_Method_Abstrac
 		$paymentUrl = $hostedpayment->getUrl();
 				
 		if(!isset($paymentUrl) || trim($paymentUrl) == '' ){
-			$paymentUrl = EvoSnapApi::getOrderCheckoutUrl($this->_getOrderCheckout(),
+			$paymentUrl = EvoSnapApi::getCheckoutUrl($this->_getOrderCheckout(),
 					$this->getTrigger3ds(), $this->getHostedPaymentsConfiguration());
 				
 			$order->addStatusToHistory($order->getStatus(), Mage::helper('hostedpayments')->__('Customer was redirected to the Snap* Hosted Payments Checkout for payment.'));
@@ -258,15 +265,46 @@ class Evo_HostedPayments_Model_Payment extends Mage_Payment_Model_Method_Abstrac
 	}
 	
 	/**
-	 * Cancels order.
+	 * Pays order.
 	 */
 	public function payOrder($snapOrder){
 		$order = $this->getOrder();
+		
+		if($this->_isCardSaved()){
+		    $this->_saveCard($snapOrder);
+		}
 		
 		$order->getPayment()->setTransactionId($this->_getTransactionId($snapOrder));
 		$order->getPayment()->capture(null);
 		$order->save();
 		$this->_clearHostedpaymentUrl($order->getRealOrderId());
+	}
+	
+	private function _saveCard($snapOrder){
+	    $token = $snapOrder->payment_transaction;
+	    $order = $this->getOrder();
+	    
+	    $storedCard = Mage::getModel('hostedpayments/storedcard');
+		$storedCard->setCustomerId($order->getCustomerId());
+		$storedCard->setTokenId($snapOrder->merchant_order_id.'-ODT-1');
+		$storedCard->setAcctName($token->acct_name);
+		$storedCard->setAcctNum(substr($token->acct_num,-4,4));
+		$storedCard->setAcctExp(strtotime($token->acct_exp));
+		$storedCard->setAcctType($token->acct_type);
+		$storedCard->setCurrencyCode($token->currency_code);
+		$storedCard->setDataChanges(true);
+		$storedCard->save();
+	}
+	
+	/**
+	 * Pays order.
+	 */
+	private function _payOrder($transactionId){
+		$order = $this->getOrder();
+		
+		$order->getPayment()->setTransactionId($transactionId);
+		$order->getPayment()->capture(null);
+		$order->save();
 	}
 	
 	private function _clearHostedpaymentUrl($order_id){
@@ -279,14 +317,8 @@ class Evo_HostedPayments_Model_Payment extends Mage_Payment_Model_Method_Abstrac
 	
 	private function _getTransactionId($snapOrder){
 		$result = null;
-		if(is_array($snapOrder->transactions)){
-			for($i = count($snapOrder->transactions) - 1; $i >= 0; $i--){
-				$txn = $snapOrder->transactions[$i];
-				if($txn->txn_action == 'sale'){
-					$result = $txn->txn_id;
-					$i = -1;
-				}
-			}
+		if($snapOrder->payment_transaction){
+			$result = $snapOrder->payment_transaction->txn_id;
 		}
 		
 		return $result;
@@ -306,43 +338,20 @@ class Evo_HostedPayments_Model_Payment extends Mage_Payment_Model_Method_Abstrac
 		$checkout->cancel_url = $checkout->return_url;
 		$checkout->auto_return = true;
 		$checkout->checkout_layout = $layout;
-		$checkout->create_token = false;
+		$checkout->create_token = $this->_isCardSaved();
 		$checkout->language = EvoSnapTools::getLanguage(Mage::app()->getLocale()->getLocale()->getLanguage());
 
-		$billing = $mOrder->getBillingAddress();
-		$shipping = $mOrder->getShippingAddress();
-		
 		$customer = new SnapCustomer();
 		
 		$customer->first_name = $mOrder->getCustomerFirstname();
 		$customer->last_name = $mOrder->getCustomerLastname();
 		$customer->email = $mOrder->getCustomerEmail();
-		$customer->phone = $billing->getTelephone();
+		$customer->phone = $mOrder->getBillingAddress()->getTelephone();
 		
 		$checkout->customer = $customer;
 		
-		$order = new SnapOrder();
-		$checkout->order = $order;
-		
-		$order->id = $this->_getOrderId($this->getConfigData('order_prefix'), $mOrder->getRealOrderId());
-		$order->total_subtotal = $mOrder->getSubtotal();
-		$order->total_discount = abs($mOrder->getDiscountAmount());
-		$order->total_shipping = $mOrder->getShippingAmount();
-		$order->total_tax = $mOrder->getTaxAmount();
-		$order->total = $mOrder->getBaseGrandTotal();
-		$order->currency_code = $mOrder->getOrderCurrencyCode();
-		
-		$products = $mOrder->getAllItems();
-		for($i = 0; $i < count($products); $i++) {
-			$order_lines[$i] = $this->_getOrderItem($products[$i]);
-		}
-		$order->lines = $order_lines;
-		
-		$order->billto_address = $this->_getAddress($billing);
-		if(!empty($shipping)){
-			$order->shipto_address = $this->_getAddress($billing);
-		}
-		
+		$checkout->order = $this->_getSnapOrder();
+
 		return $checkout;
 	}
 	
@@ -383,7 +392,7 @@ class Evo_HostedPayments_Model_Payment extends Mage_Payment_Model_Method_Abstrac
 	}
 	
 	private function _getOrderId($order_prefix, $id_order){
-		if(isset($order_prefix)){
+		if(!empty($order_prefix)){
 			$result = $order_prefix.$id_order;
 		}else{
 			$result = $id_order;
@@ -392,6 +401,79 @@ class Evo_HostedPayments_Model_Payment extends Mage_Payment_Model_Method_Abstrac
 		return $result;
 	}
 	
+	
+	/**
+	 * Retrieves stored card data.
+	 * @return Mage_Core_Model_Abstract
+	 */
+	public function getStoredCardData() {
+	    $tokenId = (int) $this->getInfoInstance()->getAdditionalInformation('token_id');
+	     
+	    if($tokenId && ($tokenId > 0)){
+	       return Mage::getModel('hostedpayments/storedcard')->load($tokenId);
+	    }
+	    
+	    return false;
+	}
+
+	/**
+	 * Tests if the card data is going to be saved in EVO Snap*.
+	 * @return boolean
+	 */
+	private function _isCardSaved() {
+	    $tokenId = (int) $this->getInfoInstance()->getAdditionalInformation('token_id');
+	    return (boolean)($this->getInfoInstance()->getAdditionalInformation('create_token') === 'true') &&
+	       !($tokenId && ($tokenId > 0));
+	}
+	
+	/**
+	 * Gets order checkout object.
+	 * @return SnapCheckoutAbstract
+	 */
+	private function _getSnapOrder(){
+	    $mOrder = $this->getOrder();
+	     
+		$order = new SnapOrder();
+		
+		$order->id = $this->_getOrderId($this->getConfigData('order_prefix'), $mOrder->getRealOrderId());
+		$order->total_subtotal = $mOrder->getSubtotal();
+		$order->total_discount = abs($mOrder->getDiscountAmount());
+		$order->total_shipping = $mOrder->getShippingAmount();
+		$order->total_tax = $mOrder->getTaxAmount();
+		$order->total = $mOrder->getBaseGrandTotal();
+		$order->currency_code = $mOrder->getOrderCurrencyCode();
+		
+		$products = $mOrder->getAllItems();
+		for($i = 0; $i < count($products); $i++) {
+			$order_lines[$i] = $this->_getOrderItem($products[$i]);
+		}
+		$order->lines = $order_lines;
+		
+		$billing = $mOrder->getBillingAddress();
+		$shipping = $mOrder->getShippingAddress();
+		
+		$order->billto_address = $this->_getAddress($billing);
+		if(!empty($shipping)){
+			$order->shipto_address = $this->_getAddress($billing);
+		}
+		
+		return $order;
+	}
+
+    /**
+     * Pays the order with the specified token.
+     * 
+     * @param Storedcard $storedCard            
+     */
+    public function payWithToken($storedCard)
+    {
+        if(!$this->getConfigData('store_cards')){
+            throw new Mage_Payment_Model_Info_Exception(Mage::helper('hostedpayments')->__('Card Store is disabled. Please contact support.'));
+        }
+        $order = $this->_getSnapOrder();
+        $snapOrder = EvoSnapApi::processTokenOrder($storedCard->getTokenId(), $order, $this->getHostedPaymentsConfiguration());
+        $this->_payOrder($snapOrder['txn_id']);
+    }
 	
 	/**
 	* prepare params array to send it to gateway page via POST

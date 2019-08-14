@@ -41,12 +41,13 @@ class EvoSnapTools
 	 * @return array the resulting call.
 	 */
 	public static function callEvoSnap($params, $url, $verifySsl = true){
+	    $fparams = EvoSnapTools::filterArray($params);
 		$rCurl = curl_init ();
 		curl_setopt ( $rCurl, CURLOPT_URL, $url );
 		curl_setopt ( $rCurl, CURLOPT_SSL_VERIFYPEER, $verifySsl );
 		curl_setopt ( $rCurl, CURLOPT_RETURNTRANSFER, 1 );
 		curl_setopt ( $rCurl, CURLOPT_POST, true );
-		curl_setopt ( $rCurl, CURLOPT_POSTFIELDS, EvoSnapTools::encodeRequest ( $params ) );
+		curl_setopt ( $rCurl, CURLOPT_POSTFIELDS, EvoSnapTools::encodeRequest($fparams) );
 		
 		$result = ( array ) json_decode ( curl_exec ( $rCurl ) );
 		
@@ -96,6 +97,36 @@ class EvoSnapTools
 		return implode('&', $aFields);
 	}
 
+    /**
+     * Filters an array removing false items.
+     * @param array $a the array to filter.
+     * @return array the resulting array.
+     */
+    public static function filterArray($a)
+    {
+        foreach ($a as &$value) {
+            if (is_array($value)) {
+                $value = EvoSnapTools::filterArray($value);
+            }
+        }
+        
+        return array_filter($a,array('EvoSnapTools', 'valueTest'));
+    }
+    
+    public static function valueTest($value){
+        $result = true;
+        
+        if(is_string($value)){
+            $result = trim($value) !== '';
+        }else if(is_array($value)){
+            $result = !empty($value);
+        }else{
+            $result = !(is_null($value) || ($value === false));
+        }
+        
+        return $result;
+    }
+	
 	/**
 	 * Gets a valid String to send to EVO Snap*.
 	 * @param string $s the String to format.
@@ -121,7 +152,7 @@ class EvoSnapTools
 	 * @return string
 	 */
 	public static function getBoolean($b){
-		return $b? 1 : 0;
+		return $b? '1' : '0';
 	}
 	
 	/**
@@ -141,17 +172,20 @@ class EvoSnapTools
 	 */
 	public static function getAddress($prefix, $address){
 		$aAddress = array();
-		$aAddress[$prefix.'_company'] = EvoSnapTools::getString($address->company);
-		$aAddress[$prefix.'_first_name'] = EvoSnapTools::getString($address->first_name);
-		$aAddress[$prefix.'_last_name'] = EvoSnapTools::getString($address->last_name);
-		$aAddress[$prefix.'_po_box_number'] = EvoSnapTools::getString($address->po_box_number);
-		$aAddress[$prefix.'_address1'] = EvoSnapTools::getString($address->address1);
-		$aAddress[$prefix.'_address2'] = EvoSnapTools::getString($address->address2);
-		$aAddress[$prefix.'_house_number'] = EvoSnapTools::getString($address->house_number);
-		$aAddress[$prefix.'_city'] = EvoSnapTools::getString($address->city);
-		$aAddress[$prefix.'_zipcode'] = EvoSnapTools::getZipCode($address->zipcode);
-		$aAddress[$prefix.'_country'] = $address->country;
-		$aAddress[$prefix.'_state'] = $address->state;
+		
+		if($address){
+    		$aAddress[$prefix.'_company'] = EvoSnapTools::getString($address->company);
+    		$aAddress[$prefix.'_first_name'] = EvoSnapTools::getString($address->first_name);
+    		$aAddress[$prefix.'_last_name'] = EvoSnapTools::getString($address->last_name);
+    		$aAddress[$prefix.'_po_box_number'] = EvoSnapTools::getString($address->po_box_number);
+    		$aAddress[$prefix.'_address1'] = EvoSnapTools::getString($address->address1);
+    		$aAddress[$prefix.'_address2'] = EvoSnapTools::getString($address->address2);
+    		$aAddress[$prefix.'_house_number'] = EvoSnapTools::getString($address->house_number);
+    		$aAddress[$prefix.'_city'] = EvoSnapTools::getString($address->city);
+    		$aAddress[$prefix.'_zipcode'] = EvoSnapTools::getZipCode($address->zipcode);
+    		$aAddress[$prefix.'_country'] = $address->country;
+    		$aAddress[$prefix.'_state'] = $address->state;
+		}
 		
 		return $aAddress;
 	}

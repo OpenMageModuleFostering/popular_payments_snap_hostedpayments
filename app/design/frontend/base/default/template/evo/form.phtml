@@ -37,3 +37,39 @@
 ?>
 <?php $_code=$this->getMethodCode() ?>
 <p style="vertical-align: middle;"><img class="credit-card-logo" src="<?php echo $this->getSkinUrl('images/evo/brand-logos.png')?>" alt="<?php echo $this->__('Credit Card Logos') ?>"  style="display: inline-block; margin: 5px; vertical-align: middle;" /><strong style="display: inline-block; vertical-align: middle;"><?php echo $this->__('Pay by VISA, MasterCard or Maestro') ?></strong></p>
+<?php if($this->getMethod()->getConfigData('store_cards') && Mage::getSingleton('customer/session')->isLoggedIn()): ?>
+
+    <?php
+        $storedCards = $this->getStoredCards();
+    ?>
+    <div class="form-list" id="payment_form_<?php echo $this->getMethodCode() ?>" style="display:none;">
+    <?php if($storedCards->getSize()): ?>
+    
+    <?php
+        $cardCounter = 0;
+        foreach ($storedCards as $storedCard) {
+            $radioId = ''
+    ?>
+      <div>
+        <input id="card<?php echo $cardCounter ?>" type="radio" name="payment[token_id]" value="<?php echo $storedCard->getData('id') ?>" <?php if($cardCounter == 0): ?> checked="checked" <?php endif; ?>/>
+        <label for="card<?php echo $cardCounter ?>"><img src="<?php echo $this->getSkinUrl('images/evo/cc_'.strtolower($storedCard->getData('acct_type')).'.png') ?>" /><?php echo $this->htmlEscape($storedCard->getData('acct_name')) ?> / <?php echo $this->htmlEscape($storedCard->getPan()) ?> (<?php echo $storedCard->getExpirationDate() ?>)</label>
+      </div>
+    <?php
+            $cardCounter++;
+        }
+    ?>
+      <div>
+        <input id="card<?php echo $cardCounter ?>" type="radio" name="payment[token_id]" value="-1" />
+        <label for="card<?php echo $cardCounter ?>"><?php echo $this->__('Pay with a new card') ?></label>
+        <input id="saveCreditCard" type="checkbox" name="payment[create_token]" value="true" />
+        <label for="saveCreditCard"><?php echo $this->__('Store card data for future purchases.') ?> <a href="<?php echo $this->getMethod()->getConfigData('stored_cards_policy') ?>" style="margin-top: 0;"><?php echo $this->__('Privacy Policy') ?></a></label>
+      </div>
+    
+    <?php else: ?>
+      <div>
+          <input id="saveCreditCard" type="checkbox" name="payment[create_token]" value="true" />
+          <label for="saveCreditCard"><?php echo $this->__('Store card data for future purchases.') ?> <a href="<?php echo $this->getMethod()->getConfigData('stored_cards_policy') ?>" style="margin-top: 0;"><?php echo $this->__('Privacy Policy') ?></a></label>
+      </div>
+    <?php endif; ?>
+    </div>
+<?php endif; ?>

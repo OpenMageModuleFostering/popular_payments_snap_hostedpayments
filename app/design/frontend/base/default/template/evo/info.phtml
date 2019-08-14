@@ -36,12 +36,21 @@
  */
 ?>
 <p style="vertical-align: middle;"><img class="credit-card-logo" src="<?php echo $this->getSkinUrl('images/evo/brand-logos.png')?>" alt="<?php echo $this->__('Credit Card Logos') ?>"  style="display: inline-block; margin: 5px; vertical-align: middle;" /><strong style="display: inline-block; vertical-align: middle;"><?php echo $this->__('Pay by VISA, MasterCard or Maestro') ?></strong></p>
-<?php
-$paymentLink = $this->_getPaymentLink();
-
-if($paymentLink !== null){
-?>
-<p><a class="hostedpayments-resume-link" href="<?php echo $paymentLink ?>"><strong><?php echo $this->__('Resume Payment')?></strong></a></p>
-<?php
-}
-?>
+<?php if(!($this->getInfo()->getOrder())): ?>
+    <?php
+    $savedCard = $this->isCardSaved();
+    $storedCard = $savedCard? null : $this->getStoredCardData();
+    ?>
+    <?php if($savedCard): ?>
+    <p><?php echo $this->__('The card data used in this payment will be stored for future purchases.')?></strong></p>
+    <?php elseif(!empty($storedCard)): ?>
+    <p><img class="credit-card-logo" src="<?php echo $this->getSkinUrl('images/evo/cc_'.strtolower($storedCard->getData('acct_type')).'.png') ?>" style="display: inline-block; margin: 5px; vertical-align: middle;" /><?php echo $this->htmlEscape($storedCard->getData('acct_name')) ?> / <?php echo $this->htmlEscape($storedCard->getPan()) ?> (<?php echo $storedCard->getExpirationDate() ?>)</p>
+    <?php endif; ?>
+<?php else: ?>
+    <?php 
+    $paymentLink = $this->_getPaymentLink();
+    ?>
+    <?php if($paymentLink !== null): ?>
+    <p><a class="hostedpayments-resume-link" href="<?php echo $paymentLink ?>"><strong><?php echo $this->__('Resume Payment')?></strong></a></p>
+    <?php endif; ?>
+<?php endif; ?>

@@ -71,8 +71,10 @@ class Evo_HostedPayments_ProcessingController extends Mage_Core_Controller_Front
 	 */
 	public function payAction()
 	{
+	    $order = null;
 		try {
 			$session = $this->_getCheckout();
+			$paid = false;
 	
 			$orderId = $this->getRequest()->getParam('id');
 			
@@ -93,23 +95,34 @@ class Evo_HostedPayments_ProcessingController extends Mage_Core_Controller_Front
 				
 				$paymentInst = $order->getPayment()->getMethodInstance();
 				
-				$paymentUrl = $paymentInst->getPaymentUrl();
-				$session->setEvoPaymentUrl($paymentUrl);
-				$useIframe = $paymentInst->getCheckoutLayout() === 'iframe'; 
-				$session->setEvoUseIframe($useIframe);
+				$storedCard = $paymentInst->getStoredCardData();
+				
+				if($storedCard){
+				    $paymentInst->payWithToken($storedCard);
+				    $paid = true;
+				}else{
+    				$paymentUrl = $paymentInst->getPaymentUrl();
+    				$session->setEvoPaymentUrl($paymentUrl);
+    				$useIframe = $paymentInst->getCheckoutLayout() === 'iframe'; 
+    				$session->setEvoUseIframe($useIframe);
+				}
 			}
 			
-			if($useIframe){
-				$this->loadLayout();
- 				$this->getLayout()->getBlock('hostedpayments.iframe')->setPaymentUrl($paymentUrl);
-				$this->renderLayout();
-			}else{
-				$this->_redirectUrl($paymentUrl);
+			if($paid){
+			    $this->_successAction($paymentInst->getOrder());
+   			}else{
+    			if($useIframe){
+    				$this->loadLayout();
+     				$this->getLayout()->getBlock('hostedpayments.iframe')->setPaymentUrl($paymentUrl);
+    				$this->renderLayout();
+    			}else{
+    				$this->_redirectUrl($paymentUrl);
+    			}
 			}
 	
 			$session->unsQuoteId();
 			$session->unsLastRealOrderId();
-		} catch (HostedPayments_Exception $e) {
+		} catch (Exception $e) {
 			Mage::log('Hosted Payments Error: '.$e->getMessage(), Zend_Log::ERR);
 			$this->_redirect('customer/account');
 		}
@@ -172,9 +185,6 @@ class Evo_HostedPayments_ProcessingController extends Mage_Core_Controller_Front
 		Mage::log($aResponse);
 	}
 
-	/**
-	 * Evo returns POST variables to this action
-	 */
 	private function _successAction(Mage_Sales_Model_Order $order)
 	{
 		$session = $this->_getCheckout();

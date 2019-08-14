@@ -42,7 +42,7 @@ class SnapSubscription extends SnapOrder {
 	public $interval_length;
 	
 	/**
-	 * Frequency of Subscription Payments: ‘days’, ‘weeks’,’months’, ‘years’
+	 * Frequency of Subscription Payments: "days", "weeks","months", "years"
 	 * @var string
 	 */
 	public $interval_unit;
@@ -55,7 +55,7 @@ class SnapSubscription extends SnapOrder {
 	public $start_date;
 	
 	/**
-	 * Total number of Subscription Payments. Specify ‘9999’ for unlimited.
+	 * Total number of Subscription Payments. Specify "9999" for unlimited.
 	 * @var integer
 	 */
 	public $total_occurrences;

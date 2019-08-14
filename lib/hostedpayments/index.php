@@ -45,6 +45,7 @@ include_once(_EVO_HP_ROOT_.'/model/checkout.php');
 include_once(_EVO_HP_ROOT_.'/model/order_checkout.php');
 include_once(_EVO_HP_ROOT_.'/model/subscription_checkout.php');
 include_once(_EVO_HP_ROOT_.'/model/combo_checkout.php');
+include_once(_EVO_HP_ROOT_.'/model/token_checkout.php');
 
 include_once(_EVO_HP_ROOT_.'/exceptions/hostepayments_exception.php');
 

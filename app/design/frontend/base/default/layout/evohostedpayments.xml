@@ -17,7 +17,7 @@
 * Software-Restricted Rights Clause at FAR 52.227-19; subparagraph
 * (c)(1)(ii) of the Rights in Technical Data and Computer Software
 * clause at DFARS 252.227-7013, subparagraph (d) of the Commercial
-* Computer Software--Licensing clause at NASA FAR supplement
+* Computer Software - Licensing clause at NASA FAR supplement
 * 16-52.227-86; or their equivalent.
 *
 * Information in this software is subject to change without notice
@@ -29,6 +29,10 @@
 
  -->
 <layout version="0.1.0">
+
+	<!--
+	Payment action. 
+	 -->
     <hostedpayments_processing_pay translate="label">
         <label>Snap* Hosted Payments Checkout</label>
         <!-- Mage_Checkout -->
@@ -43,6 +47,9 @@
         </reference>
     </hostedpayments_processing_pay>
 
+	<!--
+	Return from Hostped Payments. 
+	 -->
     <hostedpayments_processing_return translate="label">
         <label>Snap* Hosted Payments Checkout</label>
         <!-- Mage_Checkout -->
@@ -56,4 +63,24 @@
             <block type="hostedpayments/iframevalidation" name="hostedpayments.iframevalidation" template="evo/iframevalidation.phtml" />
         </reference>
     </hostedpayments_processing_return>
+
+	<!--
+	Customer account pages, rendered for all tabs in dashboard
+	-->
+
+    <customer_account>
+        <!-- Evo_HostedPayments -->
+        <reference name="customer_account_navigation">
+            <action method="addLink" translate="label" module="hostedpayments" ifconfig="payment/hostedpayments/store_cards"><name>hostedpayments_storedcards</name><path>hostedpayments/</path><label>Popular Payments - Stored Cards</label></action>
+        </reference>
+    </customer_account>
+
+    <hostedpayments_index_index translate="label">
+        <label>Customer My Account Stored Cards</label>
+        <update handle="customer_account"/>
+        <reference name="my.account.wrapper">
+            <block type="hostedpayments/storedcards" name="hostedpayments_storedcards" />
+        </reference>
+    </hostedpayments_index_index>
+
 </layout>

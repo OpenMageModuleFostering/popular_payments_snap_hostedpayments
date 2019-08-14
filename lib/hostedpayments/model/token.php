@@ -55,6 +55,12 @@ class SnapToken {
 	public $auth_amount;
 	
 	/**
+	 * ISO currency code.
+	 * @var string
+	 */
+	public $currency_code;
+	
+	/**
 	 * Metadata.
 	 * @var array
 	 */

@@ -38,22 +38,22 @@
 $installer = $this;
 $installer->startSetup();
 $table = $installer->getConnection()->newTable($installer->getTable('hostedpayments/hostedpayment'))
-    ->addColumn('id', Varien_Db_Ddl_Table::TYPE_INTEGER, null, array(
-        'unsigned' => true,
-        'nullable' => false,
-        'primary' => true,
-        'identity' => true,
-        ), 'Entity ID')
-	->addColumn('order_id', Varien_Db_Ddl_Table::TYPE_TEXT, 50, array(
-        'nullable' => false,
-        'unique' => true,
-        ), 'Order ID')
-    ->addColumn('url', Varien_Db_Ddl_Table::TYPE_TEXT, 255, array(
-        'nullable' => false,
-        ), 'Payment URL')
-	->addColumn('prefix', Varien_Db_Ddl_Table::TYPE_TEXT, 50, array(
-        'nullable' => true
-        ), 'Order ID Prefix')
-    ->setComment('Snap* Hosted Payments URLs table');
+->addColumn('id', Varien_Db_Ddl_Table::TYPE_INTEGER, null, array(
+    'unsigned' => true,
+    'nullable' => false,
+    'primary' => true,
+    'identity' => true,
+), 'Entity ID')
+->addColumn('order_id', Varien_Db_Ddl_Table::TYPE_TEXT, 50, array(
+    'nullable' => false,
+    'unique' => true,
+), 'Order ID')
+->addColumn('url', Varien_Db_Ddl_Table::TYPE_TEXT, 255, array(
+    'nullable' => false,
+), 'Payment URL')
+->addColumn('prefix', Varien_Db_Ddl_Table::TYPE_TEXT, 50, array(
+    'nullable' => true
+), 'Order ID Prefix')
+->setComment('Snap* Hosted Payments URLs table');
 $installer->getConnection()->createTable($table);
 $installer->endSetup();

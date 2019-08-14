@@ -37,7 +37,7 @@ class EvoSnapApi
 	 * Retrieves orders.
 	 * @param array $params request parameters.
 	 * @param HostedPayments $cfg Hosted Payments Configuration.
-	 * @return the order status.
+	 * @return array the orders.
 	 */
 	public static function getOrders($params, $cfg){
 		$aPost = EvoSnapApi::getEvoSnapOrdersPost($params, $cfg->code, $cfg->key);
@@ -53,7 +53,7 @@ class EvoSnapApi
 		$aPost = array(
 				'action' => 'get_orders',
 				'code' => $code,
-				'return' => 'json',
+				'return' => 'json'
 		);
 		$aPost['mac'] = EvoSnapApi::getOrdersMac($aPost, $key);
 		$aPost = array_merge($aPost, $params);
@@ -63,7 +63,7 @@ class EvoSnapApi
 	private static function getOrdersMac($aPost, $key){
 		$aMACParams = array(
 				'code' 	=> $aPost['code'],
-				'action' => $aPost['action'],
+				'action' => $aPost['action']
 		);
 		
 		return EvoSnapTools::getMac($aMACParams, $key);
@@ -73,7 +73,7 @@ class EvoSnapApi
 	 * Retrieves an order.
 	 * @param string $id the order ID.
 	 * @param HostedPayments $cfg Hosted Payments Configuration.
-	 * @return the order status.
+	 * @return mixed the order.
 	 */
 	public static function getOrder($id, $cfg){
 		$aPost = EvoSnapApi::getEvoSnapOrderPost($id, $cfg->code, $cfg->key);
@@ -106,7 +106,7 @@ class EvoSnapApi
 	 * Gets order status.
 	 * @param string $id the order ID.
 	 * @param HostedPayments $cfg Hosted Payments Configuration.
-	 * @return the order status.
+	 * @return string the order status.
 	 */
 	public static function getOrderStatus($id, $cfg){
 		$order = EvoSnapApi::getOrder($id, $cfg);
@@ -125,7 +125,7 @@ class EvoSnapApi
 				'action' => 'get_order',
 				'code' => $code,
 				'merchant_order_id' => $id,
-				'return' => 'json',
+				'return' => 'json'
 		);
 		$aPost['mac'] = EvoSnapApi::getOrderMac($aPost, $key);
 		
@@ -143,12 +143,13 @@ class EvoSnapApi
 	}
 	
 	/**
-	 * Gets checkout order
-	 * @param SnapOrder_Checkout $order the order checkout.
+	 * Gets checkout URL from Hosted Payments.
+	 * @param SnapCheckoutAbstract $order the order checkout.
 	 * @param float $trigger3ds value that triggers 3D secure.
 	 * @param HostedPayments $cfg Hosted Payments Configuration.
+	 * @return string the checkout URL.
 	 */
-	public static function getOrderCheckoutUrl($order, $trigger3ds, $cfg) {
+	public static function getCheckoutUrl($order, $trigger3ds, $cfg) {
 		$aPost = EvoSnapApi::getEvoSnapCehckoutPost($order, $trigger3ds, $cfg->code, $cfg->key);
 		$result = EvoSnapTools::callEvoSnap($aPost, $cfg->getUrl(true), $cfg->environment);
 		if ($result ['success'] != false) {
@@ -160,7 +161,7 @@ class EvoSnapApi
 	
 	/**
 	 * 
-	 * @param SnapOrder_Checkout $checkout
+	 * @param SnapCheckoutAbstract $checkout
 	 * @param float $trigger3ds
 	 * @param string $code
 	 * @param string $key
@@ -179,49 +180,109 @@ class EvoSnapApi
 			'email' => EvoSnapTools::getString($customer->email, 50)
 		);
 		
-		$order = $checkout->order;
-		$aOrder = array(
-			'merchant_order_id' => EvoSnapTools::getString($order->id, 255),
-			'total_subtotal' => EvoSnapTools::getNumber($order->total_subtotal),
-			'total_tax' => EvoSnapTools::getNumber($order->total_tax),
-			'total_shipping' => EvoSnapTools::getNumber($order->total_shipping),
-			'total_discount' => EvoSnapTools::getNumber($order->total_discount),
-			'total' => EvoSnapTools::getNumber($order->total),
-			'ship_method' => EvoSnapTools::getString($order->ship_method),
-			'currency_code' => EvoSnapTools::getString($order->currency_code),
-			'enable_3d' => EvoSnapTools::getBoolean(isset($trigger3ds) && ($checkout->order->total >= $trigger3ds))
-		);
-		
-		$aOrderLines = array();
-		$products = $order->lines;
-		for($i = 0; $i < count($products); $i++) {
-			$aOrderLines[$i] = EvoSnapApi::getOrderItem($products[$i]);
-		}
-		
-		$aOrder = array_merge($aOrder, EvoSnapTools::getAddress('billto', $order->billto_address));
-		if(isset($order->shipto_address)){
-			$aOrder = array_merge($aOrder, EvoSnapTools::getAddress('shipto', $order->shipto_address));
-		}
-		
 		$aPost = array(
 				'action' => $checkout->getAction(),
 				'code' => $code,
 				'customer' => $aCustomer,
-				'order' => $aOrder,
-				'order_item' => $aOrderLines,
 				'return_url' => $returnUrl,
 				'cancel_url' => $cancelUrl,
-				'auto_return' => '1',
+				'auto_return' => EvoSnapTools::getBoolean($checkout->auto_return),
 				'checkout_layout' => $checkout->checkout_layout,
-				'language' => $checkout->language
+				'language' => $checkout->language,
+		        'create_token' => EvoSnapTools::getBoolean($checkout->create_token)
 		);
-		$aPost['mac'] = EvoSnapApi::getOrderCheckoutMac($aPost, $key);
+		
+		if(property_exists($checkout, 'order') && !empty($checkout->order)){
+		  $aPost = array_merge($aPost, EvoSnapApi::getOrderPost($checkout->order, $trigger3ds));
+		}
+		if(property_exists($checkout, 'subscription') && !empty($checkout->subscription)){
+		   $aPost = array_merge($aPost, EvoSnapApi::getSubscriptionPost($checkout->subscription, $trigger3ds));
+		}
+		
+		$aPost['mac'] = EvoSnapApi::getCheckoutMac($aPost, $key);
 		
 		return $aPost;
 	}
 	
 	/**
-	 * 
+	 * Gets order post
+	 * @param SnapOrder $order
+	 * @param float $trigger3ds
+	 * @return array
+	 */
+	private static function getOrderPost($order, $trigger3ds){
+	    $aOrder = array(
+	        'merchant_order_id' => EvoSnapTools::getString($order->id, 255),
+	        'total_subtotal' => EvoSnapTools::getNumber($order->total_subtotal),
+	        'total_tax' => EvoSnapTools::getNumber($order->total_tax),
+	        'total_shipping' => EvoSnapTools::getNumber($order->total_shipping),
+	        'total_discount' => EvoSnapTools::getNumber($order->total_discount),
+	        'total' => EvoSnapTools::getNumber($order->total),
+	        'ship_method' => EvoSnapTools::getString($order->ship_method),
+	        'currency_code' => EvoSnapTools::getString($order->currency_code),
+	        'enable_3d' => EvoSnapTools::getBoolean(isset($trigger3ds) && ($order->total >= $trigger3ds))
+	    );
+	    
+	    $aOrderLines = array();
+	    $products = $order->lines;
+	    for($i = 0; $i < count($products); $i++) {
+	        $aOrderLines[$i] = EvoSnapApi::getOrderItem($products[$i]);
+	    }
+	    
+	    $aOrder = array_merge($aOrder, EvoSnapTools::getAddress('billto', $order->billto_address));
+	    if(isset($order->shipto_address)){
+	        $aOrder = array_merge($aOrder, EvoSnapTools::getAddress('shipto', $order->shipto_address));
+	    }
+	    
+	    return array('order' => $aOrder, 'order_item' => $aOrderLines);
+	}
+	
+	/**
+	 * Gets subscription post
+	 * @param SnapSubscription $subscription
+	 * @param float $trigger3ds
+	 * @return array
+	 */
+	private static function getSubscriptionPost($subscription, $trigger3ds){
+	    $aSubscription = array(
+	        'merchant_subscription_id' => EvoSnapTools::getString($subscription->id, 255),
+	        'interval_length' => $subscription->interval_length,
+	        'interval_unit' => $subscription->interval_unit,
+	        'start_date' => $subscription->start_date,
+	        'total_occurrences' => $subscription->total_occurrences,
+	        'trial_occurrences' => $subscription->trial_occurrences,
+	        'auto_process' => $subscription->auto_process,
+	        'total_subtotal' => EvoSnapTools::getNumber($subscription->total_subtotal),
+	        'total_tax' => EvoSnapTools::getNumber($subscription->total_tax),
+	        'total_shipping' => EvoSnapTools::getNumber($subscription->total_shipping),
+	        'total_discount' => EvoSnapTools::getNumber($subscription->total_discount),
+	        'total' => EvoSnapTools::getNumber($subscription->total),
+	        'trial_amount' => EvoSnapTools::getNumber($subscription->trial_amount),
+	        'ship_method' => EvoSnapTools::getString($subscription->ship_method),
+	        'currency_code' => EvoSnapTools::getString($subscription->currency_code),
+	        'enable_3d' => EvoSnapTools::getBoolean(isset($trigger3ds) && ($subscription->total >= $trigger3ds))
+	    );
+	    
+	    if($subscription->trial_occurrences && ($subscription->trial_occurrences > 0)){
+	        $aSubscription['trial_occurrences'] = $subscription->trial_occurrences;
+	        $aSubscription['trial_amount'] = $subscription->trial_amount;
+	    }
+	    
+	    $aSubscriptionLines = array();
+	    $products = $subscription->lines;
+	    for($i = 0; $i < count($products); $i++) {
+	        $aSubscriptionLines[$i] = EvoSnapApi::getOrderItem($products[$i]);
+	    }
+	    
+	    $aSubscription = array_merge($aSubscription, EvoSnapTools::getAddress('billto', $subscription->billto_address));
+	    if(isset($subscription->shipto_address)){
+	        $aSubscription = array_merge($aSubscription, EvoSnapTools::getAddress('shipto', $subscription->shipto_address));
+	    }
+	    
+	    return array('sub' => $aSubscription, 'sub_item' => $aSubscriptionLines);
+	}
+	
+	/**
 	 * @param OrderLine $orderItem
 	 * @return array
 	 */
@@ -236,14 +297,34 @@ class EvoSnapApi
 		);
 	}
 	
-	private static function getOrderCheckoutMac($aPost, $key){
+	private static function getCheckoutMac($aPost, $key){
 		$aMACParams = array(
 				'code' 	=> $aPost['code'],
-				'email' => $aPost['customer']['email'],
-				'order_total_subtotal' => $aPost['order']['total_subtotal'],
-				'order_total' => $aPost['order']['total'],
-				'merchant_order_id' => $aPost['order']['merchant_order_id']
+				'email' => $aPost['customer']['email']
 		);
+		
+		if(array_key_exists('order', $aPost)){
+		    $aOrderMACParams = array(
+		        'order_total_subtotal' => $aPost['order']['total_subtotal'],
+		        'order_total' => $aPost['order']['total'],
+				'merchant_order_id' => $aPost['order']['merchant_order_id']
+		    );
+		    
+		    $aMACParams = array_merge($aMACParams, $aOrderMACParams);
+		}
+		
+		if(array_key_exists('sub', $aPost)){
+		    $aSubMACParams = array(
+		        'sub_total_subtotal' => $aPost['sub']['total_subtotal'],
+		        'sub_total_occurrences' => $aPost['sub']['total_occurrences'],
+		        'sub_total' => $aPost['sub']['total'],
+		        'sub_trial_amount' => $aPost['sub']['trial_amount'],
+		        'sub_trial_occurrences' => $aPost['sub']['trial_occurrences'],
+		        'merchant_subscription_id' => $aPost['sub']['merchant_subscription_id']
+		    );
+		    
+		    $aMACParams = array_merge($aMACParams, $aSubMACParams);
+        }
 		
 		return EvoSnapTools::getMac($aMACParams, $key);
 	}
@@ -254,7 +335,7 @@ class EvoSnapApi
 	 * @param string $txnId the transaction ID.
 	 * @param float $amount the amount to credit, null value defaults to original transaction amount.
 	 * @param HostedPayments $cfg Hosted Payments Configuration.
-	 * @return the order status.
+	 * @return string the transaction ID.
 	 */
 	public static function creditOrder($id, $txnId, $amount, $cfg){
 		$aPost = EvoSnapApi::getEvoSnapCreditOrderPost($id, $txnId, $amount,
@@ -294,4 +375,252 @@ class EvoSnapApi
 		
 		return EvoSnapTools::getMac($aMACParams, $key);
 	}
+
+	/**
+	 * Retrieves callbacks.
+	 * @param array $params request parameters.
+	 * @param HostedPayments $cfg Hosted Payments Configuration.
+	 * @return array the callback list.
+	 */
+	public static function getCallbacks($params, $cfg){
+	    $aPost = EvoSnapApi::getEvoSnapCallbacksPost($params, $cfg->code, $cfg->key);
+	    $orders = EvoSnapTools::callEvoSnap($aPost, $cfg->getUrl(false), $cfg->environment);
+	    if ($orders ['success'] != false) {
+	        return $orders['results'];
+	    } else {
+	        throw new HostedPayments_Exception($orders['message']);
+	    }
+	}
+	
+	private static function getEvoSnapCallbacksPost($params, $code, $key){
+	    $aPost = array(
+	        'action' => 'get_callbacks',
+	        'code' => $code,
+	        'return' => 'json'
+	    );
+	    $aPost['mac'] = EvoSnapApi::getCallbacksMac($aPost, $key);
+	    $aPost = array_merge($aPost, $params);
+	    return $aPost;
+	}
+	
+	private static function getCallbacksMac($aPost, $key){
+	    $aMACParams = array(
+	        'code' 	=> $aPost['code'],
+	        'action' => $aPost['action']
+	    );
+	
+	    return EvoSnapTools::getMac($aMACParams, $key);
+	}
+	
+	/**
+	 * Gets checkout token
+	 * @param SnapToken_Checkout $token the token checkout.
+	 * @param boolean $enable3d enable 3D secure.
+	 * @param HostedPayments $cfg Hosted Payments Configuration.
+	 * @return string the checkout URL.
+	 */
+	public static function getTokenCheckoutUrl($token, $enable3d, $cfg) {
+		$aPost = EvoSnapApi::getEvoSnapTokenCehckoutPost($token, $enable3d, $cfg->code, $cfg->key);
+		$result = EvoSnapTools::callEvoSnap($aPost, $cfg->getUrl(true), $cfg->environment);
+		if ($result ['success'] != false) {
+			return $result ['url'];
+		} else {
+			throw new HostedPayments_Exception($result['message']);
+		}
+	}
+	
+	/**
+	 * 
+	 * @param SnapToken_Checkout $checkout
+	 * @param boolean $enable3d
+	 * @param string $code
+	 * @param string $key
+	 * @return array
+	 */
+	private static function getEvoSnapTokenCehckoutPost($checkout, $enable3d, $code, $key){
+		$returnUrl = $checkout->return_url;
+		$cancelUrl = $checkout->cancel_url;
+		
+		$customer = $checkout->customer;
+		$aCustomer = array(
+			'merchant_customer_id' => $customer->id,
+			'first_name' =>EvoSnapTools::getString($customer->first_name),
+			'last_name' => EvoSnapTools::getString($customer->last_name),
+			'phone' => EvoSnapTools::getString($customer->phone, 15),
+			'email' => EvoSnapTools::getString($customer->email, 50)
+		);
+		
+		$token = $checkout->token;
+		$aToken = array(
+			'merchant_token_id' => EvoSnapTools::getString($token->id, 255),
+		    'currency_code' => EvoSnapTools::getString($token->currency_code),
+		    'auth_amount' => EvoSnapTools::getNumber($token->auth_amount),
+			'enable_3d' => EvoSnapTools::getBoolean($enable3d)
+		);
+		
+		$aToken = array_merge($aToken, EvoSnapTools::getAddress('billto', $token->billto_address));
+		
+		$aPost = array(
+				'action' => $checkout->getAction(),
+				'code' => $code,
+				'customer' => $aCustomer,
+				'token' => $aToken,
+				'return_url' => $returnUrl,
+				'cancel_url' => $cancelUrl,
+				'auto_return' => '1',
+				'checkout_layout' => $checkout->checkout_layout,
+				'language' => $checkout->language
+		);
+		$aPost['mac'] = EvoSnapApi::getTokenCheckoutMac($aPost, $key);
+		
+		return $aPost;
+	}
+	
+	private static function getTokenCheckoutMac($aPost, $key){
+		$aMACParams = array(
+				'code' 	=> $aPost['code'],
+				'email' => $aPost['customer']['email'],
+				'merchant_order_id' => $aPost['token']['merchant_token_id']
+		);
+		
+		return EvoSnapTools::getMac($aMACParams, $key);
+	}
+
+	/**
+	 * Retrieves tokens.
+	 * @param array $params request parameters.
+	 * @param HostedPayments $cfg Hosted Payments Configuration.
+	 * @return array the orders.
+	 */
+	public static function getTokens($params, $cfg){
+		$aPost = EvoSnapApi::getEvoSnapTokensPost($params, $cfg->code, $cfg->key);
+		$tokens = EvoSnapTools::callEvoSnap($aPost, $cfg->getUrl(false), $cfg->environment);
+		if ($tokens ['success'] != false) {
+			return $tokens['tokens'];
+		} else {
+			throw new HostedPayments_Exception($tokens['message']);
+		}
+	}
+	
+	private static function getEvoSnapTokensPost($params, $code, $key){
+		$aPost = array(
+				'action' => 'get_tokens',
+				'code' => $code,
+				'return' => 'json'
+		);
+		$aPost['mac'] = EvoSnapApi::getTokensMac($aPost, $key);
+		$aPost = array_merge($aPost, $params);
+		return $aPost;
+	}
+	
+	private static function getTokensMac($aPost, $key){
+		$aMACParams = array(
+				'code' 	=> $aPost['code'],
+				'action' => $aPost['action'],
+		);
+		
+		return EvoSnapTools::getMac($aMACParams, $key);
+	}
+	
+	/**
+	 * Retrieves a token.
+	 * @param string $id the token ID.
+	 * @param HostedPayments $cfg Hosted Payments Configuration.
+	 * @return mixed the token.
+	 */
+	public static function getToken($id, $cfg){
+		$aPost = EvoSnapApi::getEvoSnapTokenPost($id, $cfg->code, $cfg->key);
+		$token = EvoSnapTools::callEvoSnap($aPost, $cfg->getUrl(false), $cfg->environment);
+		if ($token ['success'] != false) {
+			return $token['token'];
+		} else {
+			throw new HostedPayments_Exception($token['message']);
+		}
+	}
+	
+	private static function getEvoSnapTokenPost($id, $code, $key){
+		$aPost = array(
+				'action' => 'get_token',
+				'code' => $code,
+				'merchant_token_id' => $id,
+				'return' => 'json'
+		);
+		$aPost['mac'] = EvoSnapApi::getTokenMac($aPost, $key);
+		
+		return $aPost;
+	}
+	
+	private static function getTokenMac($aPost, $key){
+		$aMACParams = array(
+				'code' 	=> $aPost['code'],
+				'action' => $aPost['action'],
+				'merchant_token_id' => $aPost['merchant_token_id']
+		);
+		
+		return EvoSnapTools::getMac($aMACParams, $key);
+	}
+
+	/**
+	 * Process a token order.
+	 * @param string $id the token ID.
+	 * @param SnapOrder $order the order.
+	 * @param HostedPayments $cfg Hosted Payments Configuration.
+	 * @return mixed the token.
+	 */
+	public static function processTokenOrder($id, $order, $cfg){
+		$aPost = EvoSnapApi::getEvoSnapProcessTokenOrderPost($id, $order, $cfg->code, $cfg->key);
+		$token = EvoSnapTools::callEvoSnap($aPost, $cfg->getUrl(false), $cfg->environment);
+		if ($token ['success'] != false) {
+			return $token;
+		} else {
+			throw new HostedPayments_Exception($token['message']);
+		}
+	}
+	
+	private static function getEvoSnapProcessTokenOrderPost($id, $order, $code, $key){
+		$aOrder = array(
+			'merchant_order_id' => EvoSnapTools::getString($order->id, 255),
+			'total_subtotal' => EvoSnapTools::getNumber($order->total_subtotal),
+			'total_tax' => EvoSnapTools::getNumber($order->total_tax),
+			'total_shipping' => EvoSnapTools::getNumber($order->total_shipping),
+			'total_discount' => EvoSnapTools::getNumber($order->total_discount),
+			'total' => EvoSnapTools::getNumber($order->total),
+			'ship_method' => EvoSnapTools::getString($order->ship_method)
+		);
+		
+		$aOrderLines = array();
+		$products = $order->lines;
+		for($i = 0; $i < count($products); $i++) {
+			$aOrderLines[$i] = EvoSnapApi::getOrderItem($products[$i]);
+		}
+		
+		$aOrder = array_merge($aOrder, EvoSnapTools::getAddress('billto', $order->billto_address));
+		if(isset($order->shipto_address)){
+			$aOrder = array_merge($aOrder, EvoSnapTools::getAddress('shipto', $order->shipto_address));
+		}
+		
+        $aPost = array(
+            'action' => 'process_token',
+            'code' => $code,
+            'merchant_token_id' => $id,
+            'token_order' => $aOrder,
+            'token_order_item' => $aOrderLines,
+            'return' => 'json'
+        );
+        
+		$aPost['mac'] = EvoSnapApi::getProcessTokenOrderMac($aPost, $key);
+		
+		return $aPost;
+	}
+	
+	private static function getProcessTokenOrderMac($aPost, $key){
+		$aMACParams = array(
+				'code' 	=> $aPost['code'],
+				'action' => $aPost['action'],
+				'merchant_token_id' => $aPost['merchant_token_id']
+		);
+		
+		return EvoSnapTools::getMac($aMACParams, $key);
+	}
+
 }

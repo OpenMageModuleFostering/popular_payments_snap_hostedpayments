@@ -1,16 +1,19 @@
 {
-    "name": "OpenMageModuleFostering/Popular_Payments_Snap_HostedPayments",
+    "name": "OpenMageModuleFostering\/Popular_Payments_Snap_HostedPayments",
     "type": "magento-module",
     "license": "EVO-Payments-International-EULA",
     "homepage": "",
     "description": "Popular Payments - Snap* Hosted Payments",
     "authors": [
-    {
-        "name": "Popular Payments",
-        "email": "partners@popularpayments.es"
-    }
-],
+        {
+            "name": "Popular Payments",
+            "email": "partners@popularpayments.es"
+        }
+    ],
     "suggest": {
-        "magento-hackathon/magento-composer-installer": "*"
-    }
+        "magento-hackathon\/magento-composer-installer": "*"
+    },
+    "keywords": [
+        "openmage-module"
+    ]
 }
